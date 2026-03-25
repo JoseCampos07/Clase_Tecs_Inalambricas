@@ -2,16 +2,15 @@
 #include <RF24.h>
 #include "mbedtls/aes.h"
 
-#define CE_PIN 4 
-#define CSN_PIN 5 
-#define echo 21 
-#define trigger 22    
+#define CE_PIN 10 
+#define CSN_PIN 9 
+#define echo 5 
+#define trigger 4
 
 int distancia; 
 RF24 radio(CE_PIN, CSN_PIN); 
 const byte direccion[6] = "00001"; 
 
-// CLAVE DE SEGURIDAD (Debe tener exactamente 16 caracteres)
 const char* clave_segura = "SistemasI_2026_X"; 
 
 void encrypt(unsigned char * plainText, unsigned char * key, unsigned char * outputBuffer) {
@@ -35,6 +34,10 @@ long readUltrasonicDistance(int triggerPin, int echoPin){
 
 void setup() { 
   Serial.begin(115200);  
+  
+  // Inicialización del bus SPI con los pines 11, 12, 13
+  SPI.begin(12, 13, 11); // SCK, MISO, MOSI
+
   if (!radio.begin()) { 
     Serial.println("NRF24 NO detectado"); 
     while (1); 
@@ -44,23 +47,19 @@ void setup() {
   radio.setDataRate(RF24_250KBPS); 
   radio.openWritingPipe(direccion); 
   radio.stopListening(); 
-  Serial.println("Transmisor con Encriptación Listo"); 
+  Serial.println("Transmisor S3 Listo en Pines 4 y 5"); 
 } 
 
 void loop() { 
     distancia = 0.01723 * readUltrasonicDistance(trigger, echo); 
     
-    // Preparar buffers para AES (Bloques de 16 bytes)
     unsigned char bufferEntrada[16] = {0}; 
     unsigned char bufferCifrado[16] = {0};
     
-    // Copiamos la distancia al buffer de entrada
     memcpy(bufferEntrada, &distancia, sizeof(distancia));
 
-    // Cifrar la información
     encrypt(bufferEntrada, (unsigned char*)clave_segura, bufferCifrado);
 
-    // Enviamos el bloque cifrado de 16 bytes
     if (radio.write(bufferCifrado, 16)){ 
       Serial.print("Enviado (Cifrado): "); 
       Serial.println(distancia);
